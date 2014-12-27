@@ -32,6 +32,8 @@
 
 #if __OBJC__
 #import <CoreLocation/CoreLocation.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import <UIKit/UIKit.h>
 #endif
 
 /*! \struct RMProjectedPoint 
@@ -102,5 +104,19 @@ double RMEuclideanDistanceBetweenProjectedPoints(RMProjectedPoint point1, RMProj
 
 void RMLogProjectedPoint(RMProjectedPoint point);
 void RMLogProjectedRect(RMProjectedRect rect);
+
+#pragma mark -
+
+typedef struct _RMRange {
+    float location;
+    float length;
+} RMRange;
+
+typedef RMRange *RMRangePointer;
+
+RMRange RMMakeRange(float loc, float len);
+float RMMaxRange(RMRange range);
+bool RMLocationInRange(float loc, RMRange range);
+bool RMEqualRanges(RMRange range1, RMRange range2);
 
 #endif

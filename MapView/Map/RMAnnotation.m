@@ -87,6 +87,8 @@
     self.hasBoundingBox    = NO;
     self.enabled           = YES;
     self.clusteringEnabled = YES;
+    
+    self.visibleZoomLevelRange = RMMakeRange(-MAXFLOAT/2, MAXFLOAT);
 
     self.isUserLocationAnnotation = NO;
 

@@ -286,6 +286,7 @@
 
     _zoomDelegateQueue = [NSOperationQueue new];
     [_zoomDelegateQueue setMaxConcurrentOperationCount:1];
+    _shouldBringSelectedAnnotationToTop = YES;
 
     [self setTileCache:[RMTileCache new]];
 
@@ -1960,7 +1961,9 @@
 
         [self correctPositionOfAllAnnotations];
 
-        anAnnotation.layer.zPosition = _currentCallout.layer.zPosition = MAXFLOAT;
+        if (_shouldBringSelectedAnnotationToTop) {
+            anAnnotation.layer.zPosition = _currentCallout.layer.zPosition = MAXFLOAT;
+        }
 
         if (_delegateHasDidSelectAnnotation)
             [_delegate mapView:self didSelectAnnotation:anAnnotation];
@@ -2988,6 +2991,10 @@
 
         for (RMAnnotation *annotation in annotationsToCorrect)
         {
+            if (!RMLocationInRange(self.zoom, annotation.visibleZoomLevelRange)) {
+                continue;
+            }
+            
             if (annotation.layer == nil && _delegateHasLayerForAnnotation)
                 annotation.layer = [_delegate mapView:self layerForAnnotation:annotation];
 
@@ -3040,7 +3047,7 @@
                 {
                     [self correctScreenPosition:annotation animated:animated];
 
-                    if ([annotation isAnnotationWithinBounds:[self bounds]])
+                    if ([annotation isAnnotationWithinBounds:[self bounds]] && RMLocationInRange(self.zoom, annotation.visibleZoomLevelRange))
                     {
                         if (annotation.layer == nil && _delegateHasLayerForAnnotation)
                             annotation.layer = [_delegate mapView:self layerForAnnotation:annotation];
@@ -3187,7 +3194,7 @@
 
     // Bring any active callout annotation to the front.
     //
-    if (_currentAnnotation)
+    if (_currentAnnotation && _shouldBringSelectedAnnotationToTop)
         _currentAnnotation.layer.zPosition = _currentCallout.layer.zPosition = MAXFLOAT;
 }
 
@@ -3210,7 +3217,7 @@
     {
         if ([_annotations containsObject:annotation])
             return;
-
+        
         [_annotations addObject:annotation];
         [self.quadTree addAnnotation:annotation];
     }

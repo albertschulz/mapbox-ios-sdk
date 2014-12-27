@@ -114,6 +114,12 @@
 
 @property (nonatomic, weak) RMQuadTreeNode *quadTreeNode;
 
+/**
+ * Range in which the annotation is visible on screen
+ * Defaults to nil which means the annotation is always visible
+ */
+@property (nonatomic, assign) RMRange visibleZoomLevelRange;
+
 /** @name Filtering Types of Annotations */
 
 /** Whether the annotation is related to display of the user's location. Useful for filtering purposes when providing annotation layers in the delegate. 

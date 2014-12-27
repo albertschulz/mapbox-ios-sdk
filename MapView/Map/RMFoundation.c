@@ -223,3 +223,24 @@ void RMLogProjectedRect(RMProjectedRect rect)
 {
     printf("ProjectedRect at (%.0f,%.0f), size (%.0f,%.0f)\n", rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
 }
+
+#pragma mark -
+
+RMRange RMMakeRange(float loc, float len) {
+    RMRange r;
+    r.location = loc;
+    r.length = len;
+    return r;
+}
+
+float RMMaxRange(RMRange range) {
+    return (range.location + range.length);
+}
+
+bool RMLocationInRange(float loc, RMRange range) {
+    return (!(loc < range.location) && (loc - range.location) < range.length) ? true : false;
+}
+
+bool RMEqualRanges(RMRange range1, RMRange range2) {
+    return (range1.location == range2.location && range1.length == range2.length);
+}
