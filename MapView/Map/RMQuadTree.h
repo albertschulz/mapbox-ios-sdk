@@ -81,6 +81,7 @@ typedef enum : short {
                createClusterAnnotations:(BOOL)createClusterAnnotations
                withProjectedClusterSize:(RMProjectedSize)clusterSize
           andProjectedClusterMarkerSize:(RMProjectedSize)clusterMarkerSize
-                      findGravityCenter:(BOOL)findGravityCenter;
+                      findGravityCenter:(BOOL)findGravityCenter
+                                mapZoom:(float)zoom;
 
 @end

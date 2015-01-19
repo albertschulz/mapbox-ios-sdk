@@ -2940,6 +2940,42 @@
     [annotation setPosition:newPosition animated:animated];
 }
 
+- (void)correctVisibility:(RMAnnotation *)annotation animated:(BOOL)animated
+{
+    if ([annotation isAnnotationWithinBounds:[self bounds]] && RMLocationInRange(self.zoom, annotation.visibleZoomLevelRange))
+    {
+        if (annotation.layer == nil && _delegateHasLayerForAnnotation)
+            annotation.layer = [_delegate mapView:self layerForAnnotation:annotation];
+        
+        if (annotation.layer == nil)
+            return;
+        
+        if ([annotation.layer isKindOfClass:[RMMarker class]])
+            annotation.layer.transform = _annotationTransform;
+        
+        
+        if ( ! [_visibleAnnotations containsObject:annotation])
+        {
+            [_overlayView addSublayer:annotation.layer];
+            [_visibleAnnotations addObject:annotation];
+        }
+    }
+    else
+    {
+        if ( ! annotation.isUserLocationAnnotation)
+        {
+            if (_delegateHasWillHideLayerForAnnotation)
+                [_delegate mapView:self willHideLayerForAnnotation:annotation];
+            
+            annotation.layer = nil;
+            [_visibleAnnotations removeObject:annotation];
+            
+            if (_delegateHasDidHideLayerForAnnotation)
+                [_delegate mapView:self didHideLayerForAnnotation:annotation];
+        }
+    }
+}
+
 - (void)correctPositionOfAllAnnotationsIncludingInvisibles:(BOOL)correctAllAnnotations animated:(BOOL)animated
 {
     // Prevent blurry movements
@@ -2963,9 +2999,20 @@
     if (self.quadTree)
     {
         if (!correctAllAnnotations || _mapScrollViewIsZooming)
-        {
-            for (RMAnnotation *annotation in _visibleAnnotations)
+        {            
+            for (RMAnnotation *annotation in _visibleAnnotations) {
                 [self correctScreenPosition:annotation animated:animated];
+            }
+            
+            NSInteger previousNumberOfVisibles = _visibleAnnotations.count;
+            
+            for (RMAnnotation *annotation in _annotations) {
+                [self correctVisibility:annotation animated:true];
+            }
+            
+            if (previousNumberOfVisibles != _visibleAnnotations.count) {
+                [self correctOrderingOfAllAnnotations];
+            }
 
 //            RMLog(@"%d annotations corrected", [visibleAnnotations count]);
 
@@ -2986,7 +3033,9 @@
                                                          createClusterAnnotations:self.clusteringEnabled
                                                          withProjectedClusterSize:RMProjectedSizeMake(self.clusterAreaSize.width * _metersPerPixel, self.clusterAreaSize.height * _metersPerPixel)
                                                     andProjectedClusterMarkerSize:RMProjectedSizeMake(self.clusterMarkerSize.width * _metersPerPixel, self.clusterMarkerSize.height * _metersPerPixel)
-                                                                findGravityCenter:self.positionClusterMarkersAtTheGravityCenter];
+                                                                findGravityCenter:self.positionClusterMarkersAtTheGravityCenter
+                                                                          mapZoom:self.zoom];
+        
         NSMutableSet *previousVisibleAnnotations = [[NSMutableSet alloc] initWithSet:_visibleAnnotations];
 
         for (RMAnnotation *annotation in annotationsToCorrect)

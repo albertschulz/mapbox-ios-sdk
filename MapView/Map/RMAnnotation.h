@@ -115,8 +115,8 @@
 @property (nonatomic, weak) RMQuadTreeNode *quadTreeNode;
 
 /**
- * Range in which the annotation is visible on screen
- * Defaults to nil which means the annotation is always visible
+ * Range in which the annotation is visible on map.
+ * Defaults a Range from 0 to `MAXFLOAT` which means the annotation is always visible.
  */
 @property (nonatomic, assign) RMRange visibleZoomLevelRange;
 

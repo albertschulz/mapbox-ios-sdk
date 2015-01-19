@@ -79,6 +79,7 @@
     self.subtitle     = nil;
     self.userInfo     = nil;
     self.quadTreeNode = nil;
+    self.visibleZoomLevelRange = RMMakeRange(0, MAXFLOAT);
 
     self.annotationType    = nil;
     self.annotationIcon    = nil;
@@ -87,8 +88,6 @@
     self.hasBoundingBox    = NO;
     self.enabled           = YES;
     self.clusteringEnabled = YES;
-    
-    self.visibleZoomLevelRange = RMMakeRange(-MAXFLOAT/2, MAXFLOAT);
 
     self.isUserLocationAnnotation = NO;
 

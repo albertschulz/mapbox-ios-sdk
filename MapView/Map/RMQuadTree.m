@@ -56,7 +56,8 @@
            createClusterAnnotations:(BOOL)createClusterAnnotations
            withProjectedClusterSize:(RMProjectedSize)clusterSize
       andProjectedClusterMarkerSize:(RMProjectedSize)clusterMarkerSize
-                  findGravityCenter:(BOOL)findGravityCenter;
+                  findGravityCenter:(BOOL)findGravityCenter
+                            mapZoom:(float)zoom;
 
 - (void)removeUpwardsAllCachedClusterAnnotations;
 
@@ -399,6 +400,7 @@
            withProjectedClusterSize:(RMProjectedSize)clusterSize
       andProjectedClusterMarkerSize:(RMProjectedSize)clusterMarkerSize
                   findGravityCenter:(BOOL)findGravityCenter
+                            mapZoom:(float)zoom
 {
     if (createClusterAnnotations)
     {
@@ -556,19 +558,19 @@
     }
 
     if (RMProjectedRectIntersectsProjectedRect(aBoundingBox, _northWestBoundingBox))
-        [_northWest addAnnotationsInBoundingBox:aBoundingBox toMutableArray:someArray createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter];
+        [_northWest addAnnotationsInBoundingBox:aBoundingBox toMutableArray:someArray createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter mapZoom:zoom];
     if (RMProjectedRectIntersectsProjectedRect(aBoundingBox, _northEastBoundingBox))
-        [_northEast addAnnotationsInBoundingBox:aBoundingBox toMutableArray:someArray createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter];
+        [_northEast addAnnotationsInBoundingBox:aBoundingBox toMutableArray:someArray createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter mapZoom:zoom];
     if (RMProjectedRectIntersectsProjectedRect(aBoundingBox, _southWestBoundingBox))
-        [_southWest addAnnotationsInBoundingBox:aBoundingBox toMutableArray:someArray createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter];
+        [_southWest addAnnotationsInBoundingBox:aBoundingBox toMutableArray:someArray createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter mapZoom:zoom];
     if (RMProjectedRectIntersectsProjectedRect(aBoundingBox, _southEastBoundingBox))
-        [_southEast addAnnotationsInBoundingBox:aBoundingBox toMutableArray:someArray createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter];
+        [_southEast addAnnotationsInBoundingBox:aBoundingBox toMutableArray:someArray createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter mapZoom:zoom];
 
     @synchronized (_annotations)
     {
         for (RMAnnotation *annotation in _annotations)
         {
-            if (RMProjectedRectIntersectsProjectedRect(aBoundingBox, annotation.projectedBoundingBox))
+            if (RMProjectedRectIntersectsProjectedRect(aBoundingBox, annotation.projectedBoundingBox) && RMLocationInRange(zoom, annotation.visibleZoomLevelRange))
                 [someArray addObject:annotation];
         }
     }
@@ -652,16 +654,21 @@
 
 - (NSArray *)annotationsInProjectedRect:(RMProjectedRect)boundingBox
 {
-    return [self annotationsInProjectedRect:boundingBox createClusterAnnotations:NO withProjectedClusterSize:RMProjectedSizeMake(0.0, 0.0) andProjectedClusterMarkerSize:RMProjectedSizeMake(0.0, 0.0) findGravityCenter:NO];
+    return [self annotationsInProjectedRect:boundingBox createClusterAnnotations:NO withProjectedClusterSize:RMProjectedSizeMake(0.0, 0.0) andProjectedClusterMarkerSize:RMProjectedSizeMake(0.0, 0.0) findGravityCenter:NO mapZoom:kInvalidMapZoom];
 }
 
-- (NSArray *)annotationsInProjectedRect:(RMProjectedRect)boundingBox createClusterAnnotations:(BOOL)createClusterAnnotations withProjectedClusterSize:(RMProjectedSize)clusterSize andProjectedClusterMarkerSize:(RMProjectedSize)clusterMarkerSize findGravityCenter:(BOOL)findGravityCenter
+- (NSArray *)annotationsInProjectedRect:(RMProjectedRect)boundingBox
+               createClusterAnnotations:(BOOL)createClusterAnnotations
+               withProjectedClusterSize:(RMProjectedSize)clusterSize
+          andProjectedClusterMarkerSize:(RMProjectedSize)clusterMarkerSize
+                      findGravityCenter:(BOOL)findGravityCenter
+                                mapZoom:(float)zoom
 {
     NSMutableArray *annotations = [NSMutableArray array];
 
     @synchronized (self)
     {
-        [_rootNode addAnnotationsInBoundingBox:boundingBox toMutableArray:annotations createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter];
+        [_rootNode addAnnotationsInBoundingBox:boundingBox toMutableArray:annotations createClusterAnnotations:createClusterAnnotations withProjectedClusterSize:clusterSize andProjectedClusterMarkerSize:clusterMarkerSize findGravityCenter:findGravityCenter mapZoom:zoom];
     }
 
     return annotations;

@@ -49,6 +49,8 @@
 @class RMQuadTree;
 @class RMUserLocation;
 
+#define kInvalidMapZoom -1
+
 // constants for the scrollview deceleration mode
 typedef enum : NSUInteger {
     RMMapDecelerationNormal = 0,
