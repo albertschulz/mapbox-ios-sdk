@@ -1,6 +1,6 @@
 ### Information about this fork
 
-The following features are included within this fork:
+The following features are included:
 * allow multiple selection of annotations
 * allow to show annotations within a specific zoom level range only
 
