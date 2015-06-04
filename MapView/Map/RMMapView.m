@@ -209,8 +209,8 @@
 
     UIButton *_compassButton;
 
-    RMAnnotation *_currentAnnotation;
-    SMCalloutView *_currentCallout;
+    NSMutableSet *_currentAnnotations;
+    NSMutableSet *_currentCallouts;
 
     BOOL _rotateAtMinZoom;
 }
@@ -251,6 +251,9 @@
     _draggingEnabled = YES;
 
     _draggedAnnotation = nil;
+    _currentAnnotations = [NSMutableSet new];
+    _currentCallouts = [NSMutableSet new];
+    _allowsMultipleSelection = NO;
 
     self.backgroundColor = (RMPostVersion6 ? [UIColor colorWithRed:0.970 green:0.952 blue:0.912 alpha:1.000] : [UIColor grayColor]);
 
@@ -1669,10 +1672,19 @@
 - (void)handleSingleTap:(UIGestureRecognizer *)recognizer
 {
     CALayer *hit = [_overlayView overlayHitTest:[recognizer locationInView:self]];
-
-    if (_currentAnnotation && ! [hit isEqual:_currentAnnotation.layer])
+    
+    
+    BOOL animated = ![hit isKindOfClass:[RMMarker class]];
+    
+    if (!_allowsMultipleSelection)
     {
-        [self deselectAnnotation:_currentAnnotation animated:( ! [hit isKindOfClass:[RMMarker class]])];
+        [_currentAnnotations enumerateObjectsUsingBlock:^(RMAnnotation *annotation, BOOL *stop)
+         {
+             if (![annotation.layer isEqual:hit])
+             {
+                 [self deselectAnnotation:annotation animated:animated];
+             }
+         }];
     }
 
     if ( ! hit)
@@ -1698,6 +1710,18 @@
     }
     else
     {
+    
+        if (_allowsMultipleSelection)
+        {
+            [_currentAnnotations enumerateObjectsUsingBlock:^(RMAnnotation *annotation, BOOL *stop)
+             {
+                 if (![annotation.layer isEqual:hit])
+                 {
+                     [self deselectAnnotation:annotation animated:animated];
+                 }
+             }];
+        }
+        
         [self singleTapAtPoint:[recognizer locationInView:self]];
     }
 }
@@ -1790,8 +1814,15 @@
 
         // deselect any annotation that we're about to drag
         //
-        if (_currentAnnotation && [hit isEqual:_currentAnnotation.layer])
-            [self deselectAnnotation:_currentAnnotation animated:NO];
+        
+        if (_currentAnnotations.count > 0 && [[_currentAnnotations valueForKey:@"layer"] containsObject:hit])
+        {
+            [_currentAnnotations enumerateObjectsUsingBlock:^(RMAnnotation *annotation, BOOL *stop)
+            {
+                if ([annotation.layer isEqual:hit])
+                    [self deselectAnnotation:annotation animated:NO];
+            }];
+        }
     }
 
     if ([hit isKindOfClass:[RMMapLayer class]] && [self shouldDragAnnotation:[((RMMapLayer *)hit) annotation]])
@@ -1882,8 +1913,16 @@
 
 - (void)tapOnAnnotation:(RMAnnotation *)anAnnotation atPoint:(CGPoint)aPoint
 {
-    if (anAnnotation.isEnabled && ! [anAnnotation isEqual:_currentAnnotation])
-        [self selectAnnotation:anAnnotation animated:YES];
+    if (!_allowsMultipleSelection)
+    {
+        if (anAnnotation.isEnabled && ! [anAnnotation isEqual:_currentAnnotations.allObjects.firstObject])
+            [self selectAnnotation:anAnnotation animated:YES];
+    }
+    else
+    {
+        if (anAnnotation.isEnabled && ![_currentAnnotations containsObject:anAnnotation])
+            [self selectAnnotation:anAnnotation animated:YES];
+    }
 
     if (_delegateHasTapOnAnnotation && anAnnotation)
     {
@@ -1898,93 +1937,179 @@
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
-    if (_currentCallout)
+    if (_currentCallouts.count > 0)
     {
-        UIView *calloutCandidate = [_currentCallout hitTest:[_currentCallout convertPoint:point fromView:self] withEvent:event];
-
-        if (calloutCandidate)
-            return calloutCandidate;
+        for (SMCalloutView *calloutView in _currentCallouts)
+        {
+            UIView *calloutCandidate = [calloutView hitTest:[calloutView convertPoint:point fromView:self] withEvent:event];
+            
+            if (calloutCandidate)
+                return calloutCandidate;
+        }
     }
-
+    
     return [super hitTest:point withEvent:event];
 }
 
 - (void)selectAnnotation:(RMAnnotation *)anAnnotation animated:(BOOL)animated
 {
-    if ( ! anAnnotation && _currentAnnotation)
+    if ( ! anAnnotation && _currentAnnotations.count > 0)
     {
-        [self deselectAnnotation:_currentAnnotation animated:animated];
+        // There is no annotation which should be selected, so deselect all annotations which are currently selected
+        [_currentAnnotations enumerateObjectsUsingBlock:^(RMAnnotation *annotation, BOOL *stop)
+        {
+            [self deselectAnnotation:annotation animated:animated];
+        }];
     }
-    else if (anAnnotation.isEnabled && ! [anAnnotation isEqual:_currentAnnotation])
+    else if (_allowsMultipleSelection && anAnnotation.isEnabled)
     {
         self.userTrackingMode = RMUserTrackingModeNone;
-
-        [self deselectAnnotation:_currentAnnotation animated:NO];
-
-        _currentAnnotation = anAnnotation;
-
+        
+        [_currentAnnotations addObject:anAnnotation];
+        
         if (anAnnotation.layer.canShowCallout && anAnnotation.title)
         {
-            _currentCallout = [SMCalloutView platformCalloutView];
-
+            SMCalloutView *callout = [SMCalloutView platformCalloutView];
+            
+            [_currentCallouts addObject:callout];
+            anAnnotation.calloutView = callout;
+            
             if (RMPostVersion7)
-                _currentCallout.tintColor = self.tintColor;
-
-            _currentCallout.title    = anAnnotation.title;
-            _currentCallout.subtitle = anAnnotation.subtitle;
-
-            _currentCallout.calloutOffset = anAnnotation.layer.calloutOffset;
-
+                callout.tintColor = self.tintColor;
+            
+            callout.title    = anAnnotation.title;
+            callout.subtitle = anAnnotation.subtitle;
+            
+            callout.calloutOffset = anAnnotation.layer.calloutOffset;
+            
             if (anAnnotation.layer.leftCalloutAccessoryView)
             {
                 if ([anAnnotation.layer.leftCalloutAccessoryView isKindOfClass:[UIControl class]])
                     [anAnnotation.layer.leftCalloutAccessoryView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapOnCalloutAccessoryWithGestureRecognizer:)]];
-
-                _currentCallout.leftAccessoryView = anAnnotation.layer.leftCalloutAccessoryView;
+                
+                callout.leftAccessoryView = anAnnotation.layer.leftCalloutAccessoryView;
             }
-
+            
             if (anAnnotation.layer.rightCalloutAccessoryView)
             {
                 if ([anAnnotation.layer.rightCalloutAccessoryView isKindOfClass:[UIControl class]])
                     [anAnnotation.layer.rightCalloutAccessoryView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapOnCalloutAccessoryWithGestureRecognizer:)]];
-
-                _currentCallout.rightAccessoryView = anAnnotation.layer.rightCalloutAccessoryView;
+                
+                callout.rightAccessoryView = anAnnotation.layer.rightCalloutAccessoryView;
             }
-
-            _currentCallout.delegate = self;
-
-            _currentCallout.permittedArrowDirection = SMCalloutArrowDirectionDown;
-
-            [_currentCallout presentCalloutFromRect:anAnnotation.layer.bounds
+            
+            callout.delegate = self;
+            
+            callout.permittedArrowDirection = SMCalloutArrowDirectionDown;
+            
+            [callout presentCalloutFromRect:anAnnotation.layer.bounds
                                             inLayer:anAnnotation.layer
                                  constrainedToLayer:self.layer
                                            animated:animated];
         }
-
+        
         [self correctPositionOfAllAnnotations];
-
-        if (_shouldBringSelectedAnnotationToTop) {
-            anAnnotation.layer.zPosition = _currentCallout.layer.zPosition = MAXFLOAT;
+        
+        if (_shouldBringSelectedAnnotationToTop)
+        {
+            [_currentAnnotations enumerateObjectsUsingBlock:^(RMAnnotation *annotation, BOOL *stop)
+            {
+                annotation.layer.zPosition = MAXFLOAT;
+            }];
+            
+            [_currentCallouts enumerateObjectsUsingBlock:^(SMCalloutView *calloutView, BOOL *stop)
+            {
+                calloutView.layer.zPosition = MAXFLOAT;
+            }];
         }
-
+        
         if (_delegateHasDidSelectAnnotation)
             [_delegate mapView:self didSelectAnnotation:anAnnotation];
+
+    }
+    else if (!_allowsMultipleSelection && anAnnotation.isEnabled && ![anAnnotation isEqual:_currentAnnotations.allObjects.firstObject])
+    {
+        self.userTrackingMode = RMUserTrackingModeNone;
+        
+        [self deselectAnnotation:_currentAnnotations.allObjects.firstObject animated:NO];
+        
+        [_currentAnnotations addObject:anAnnotation];
+        
+        if (anAnnotation.layer.canShowCallout && anAnnotation.title)
+        {
+            SMCalloutView *calloutView = [SMCalloutView platformCalloutView];
+            
+            [_currentCallouts addObject:calloutView];
+            anAnnotation.calloutView = calloutView;
+            
+            if (RMPostVersion7)
+                calloutView.tintColor = self.tintColor;
+            
+            calloutView.title    = anAnnotation.title;
+            calloutView.subtitle = anAnnotation.subtitle;
+            
+            calloutView.calloutOffset = anAnnotation.layer.calloutOffset;
+            
+            if (anAnnotation.layer.leftCalloutAccessoryView)
+            {
+                if ([anAnnotation.layer.leftCalloutAccessoryView isKindOfClass:[UIControl class]])
+                    [anAnnotation.layer.leftCalloutAccessoryView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapOnCalloutAccessoryWithGestureRecognizer:)]];
+                
+                calloutView.leftAccessoryView = anAnnotation.layer.leftCalloutAccessoryView;
+            }
+            
+            if (anAnnotation.layer.rightCalloutAccessoryView)
+            {
+                if ([anAnnotation.layer.rightCalloutAccessoryView isKindOfClass:[UIControl class]])
+                    [anAnnotation.layer.rightCalloutAccessoryView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapOnCalloutAccessoryWithGestureRecognizer:)]];
+                
+                calloutView.rightAccessoryView = anAnnotation.layer.rightCalloutAccessoryView;
+            }
+            
+            calloutView.delegate = self;
+            
+            calloutView.permittedArrowDirection = SMCalloutArrowDirectionDown;
+            
+            [calloutView presentCalloutFromRect:anAnnotation.layer.bounds
+                                            inLayer:anAnnotation.layer
+                                 constrainedToLayer:self.layer
+                                           animated:animated];
+        }
+        
+        [self correctPositionOfAllAnnotations];
+        
+        if (_shouldBringSelectedAnnotationToTop)
+        {
+            [_currentAnnotations enumerateObjectsUsingBlock:^(RMAnnotation *annotation, BOOL *stop)
+             {
+                 annotation.layer.zPosition = MAXFLOAT;
+             }];
+            
+            [_currentCallouts enumerateObjectsUsingBlock:^(SMCalloutView *calloutView, BOOL *stop)
+             {
+                 calloutView.layer.zPosition = MAXFLOAT;
+             }];
+        }
+        
+        if (_delegateHasDidSelectAnnotation)
+            [_delegate mapView:self didSelectAnnotation:anAnnotation];
+
     }
 }
 
 - (void)deselectAnnotation:(RMAnnotation *)annotation animated:(BOOL)animated
 {
-    if ([annotation isEqual:_currentAnnotation])
+    if ([_currentAnnotations containsObject:annotation])
     {
-        [_currentCallout dismissCalloutAnimated:animated];
+        SMCalloutView *callout = annotation.calloutView;
+        [callout dismissCalloutAnimated:animated];
 
         if (animated)
             [self performSelector:@selector(correctPositionOfAllAnnotations) withObject:nil afterDelay:1.0/3.0];
         else
             [self correctPositionOfAllAnnotations];
 
-         _currentAnnotation = nil;
-         _currentCallout = nil;
+        [_currentAnnotations removeObject:annotation];
 
         if (_delegateHasDidDeselectAnnotation)
             [_delegate mapView:self didDeselectAnnotation:annotation];
@@ -1998,7 +2123,12 @@
 
 - (RMAnnotation *)selectedAnnotation
 {
-    return _currentAnnotation;
+    return _currentAnnotations.allObjects.firstObject;
+}
+
+- (NSSet *)selectedAnnotations
+{
+    return [NSSet setWithSet:_currentAnnotations];
 }
 
 - (NSTimeInterval)calloutView:(SMCalloutView *)calloutView delayForRepositionWithSize:(CGSize)offset
@@ -2022,8 +2152,9 @@
 
 - (void)tapOnCalloutAccessoryWithGestureRecognizer:(UIGestureRecognizer *)recognizer
 {
-    if (_delegateHasTapOnCalloutAccessoryControlForAnnotation)
-        [_delegate tapOnCalloutAccessoryControl:(UIControl *)recognizer.view forAnnotation:_currentAnnotation onMap:self];
+    // TODO: fix this
+    //if (_delegateHasTapOnCalloutAccessoryControlForAnnotation)
+        //[_delegate tapOnCalloutAccessoryControl:(UIControl *)recognizer.view forAnnotation:_currentAnnotation onMap:self];
 }
 
 - (void)doubleTapOnAnnotation:(RMAnnotation *)anAnnotation atPoint:(CGPoint)aPoint
@@ -2739,8 +2870,13 @@
 
     // update callout view hierarchy
     //
-    if (_currentCallout)
-        _currentCallout.tintColor = self.tintColor;
+    if (_currentCallouts.count > 0)
+    {
+        [_currentCallouts enumerateObjectsUsingBlock:^(SMCalloutView *callout, BOOL *stop)
+        {
+            callout.tintColor = self.tintColor;
+        }];
+    }
 }
 
 #pragma mark -
@@ -3245,8 +3381,18 @@
 
     // Bring any active callout annotation to the front.
     //
-    if (_currentAnnotation && _shouldBringSelectedAnnotationToTop)
-        _currentAnnotation.layer.zPosition = _currentCallout.layer.zPosition = MAXFLOAT;
+    if (_currentAnnotations.count > 0 && _shouldBringSelectedAnnotationToTop)
+    {
+        [_currentAnnotations enumerateObjectsUsingBlock:^(RMAnnotation *annotation, BOOL *stop)
+        {
+            annotation.layer.zPosition = MAXFLOAT;
+        }];
+        
+        [_currentCallouts enumerateObjectsUsingBlock:^(SMCalloutView *callout, BOOL *stop)
+        {
+            callout.layer.zPosition = MAXFLOAT;
+        }];
+    }
 }
 
 - (NSArray *)annotations

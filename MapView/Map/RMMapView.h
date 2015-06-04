@@ -352,8 +352,21 @@ typedef enum : NSUInteger {
 *   @param animated If `YES`, the callout view is animated offscreen. */
 - (void)deselectAnnotation:(RMAnnotation *)annotation animated:(BOOL)animated;
 
-/** The annotation that is currently selected. */
-@property (nonatomic, strong) RMAnnotation *selectedAnnotation;
+/** 
+ * The annotation that is currently selected.
+ * Please note: If multiple annotations are selected, this will return a random annotation
+ */
+- (RMAnnotation *)selectedAnnotation;
+
+/**
+ * The annotations that are currently selected.
+ */
+- (NSSet *)selectedAnnotations;
+
+/**
+ * Allow multiple annotations to be selected. Defaults to NO. (Should be set at map creation, no support for change this during 'runtime')
+ */
+@property (nonatomic, assign) BOOL allowsMultipleSelection;
 
 #pragma mark - TileSources
 

@@ -31,7 +31,7 @@
 #define kRMTrackingHaloAnnotationTypeName   @"RMTrackingHaloAnnotation"
 #define kRMAccuracyCircleAnnotationTypeName @"RMAccuracyCircleAnnotation"
 
-@class RMMapView, RMMapLayer, RMQuadTreeNode;
+@class RMMapView, RMMapLayer, RMQuadTreeNode, SMCalloutView;
 
 /** An RMAnnotation defines a container for annotation data to be placed on a map. At a future point in time, depending on map use, a visible layer may be requested and displayed for the annotation. The layer is provided by an RMMapView's delegate when first needed for display. 
 *
@@ -167,6 +167,8 @@
 - (void)setPosition:(CGPoint)position animated:(BOOL)animated;
 
 #pragma mark -
+
+@property (nonatomic, strong) SMCalloutView *calloutView;
 
 // Used internally
 @property (nonatomic, weak) RMMapView *mapView;

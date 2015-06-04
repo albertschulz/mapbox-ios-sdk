@@ -14,6 +14,9 @@ xcuserdata
 profile
 *.moved-aside
 
+# IntelliJ
+.idea
+
 # OS X
 .DS_Store
 Icon?
@@ -29,3 +32,4 @@ Icon?
 Docs
 CocoaPods
 _site
+Example/*
