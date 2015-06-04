@@ -1,3 +1,9 @@
+### Information about this fork
+
+The following features are included within this fork:
+* allow multiple selection of annotations
+* allow to show annotations within a specific zoom level range only
+
 Mapbox iOS SDK
 --------------
 
