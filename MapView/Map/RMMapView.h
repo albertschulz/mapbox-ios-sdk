@@ -352,6 +352,11 @@ typedef enum : NSUInteger {
 *   @param animated If `YES`, the callout view is animated offscreen. */
 - (void)deselectAnnotation:(RMAnnotation *)annotation animated:(BOOL)animated;
 
+/** Deselects multiple specified annotations and hides their callout views.
+ *   @param annotations The annotation objects to deselect.
+ *   @param animated If `YES`, the callout view is animated offscreen. */
+- (void)deselectAnnotations:(NSArray *)annotations animated:(BOOL)animated;
+
 /** 
  * The annotation that is currently selected.
  * Please note: If multiple annotations are selected, this will return a random annotation

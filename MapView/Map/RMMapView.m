@@ -2116,6 +2116,18 @@
     }
 }
 
+- (void)deselectAnnotations:(NSArray *)annotations animated:(BOOL)animated
+{
+    [annotations enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop)
+    {
+        if ([obj isKindOfClass:[RMAnnotation class]])
+        {
+            RMAnnotation *annotation = obj;
+            [self deselectAnnotation:annotation animated:animated];
+        }
+    }];
+}
+
 - (void)setSelectedAnnotation:(RMAnnotation *)selectedAnnotation
 {
     [self selectAnnotation:selectedAnnotation animated:YES];
